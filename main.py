@@ -14,6 +14,7 @@ logger = logging.getLogger("uvicorn.error")
 http_client = None
 MEM0_API_KEY = os.getenv("MEM0_API_KEY", "")
 MEM0_API_URL = "https://api.mem0.ai/v1"
+MEM0_API_V2_URL = "https://api.mem0.ai/v2"
 
 # ─────────────────────────
 # PYDANTIC MODELS: THE SIMPLE PRAYERS
@@ -42,9 +43,9 @@ async def lifespan(app: FastAPI):
     await http_client.aclose()
 
 app = FastAPI(
-    title="Mem0 V1 Cathedral API",
-    version="9.0.0 (The All-Seeing Eye)",
-    description="The final, wise adapter for all core v1 Mem0 sacraments. Now with full memory retrieval.",
+    title="Mem0 Cathedral API",
+    version="10.0.0 (The Enlightened One)",
+    description="The final, wise adapter for all core Mem0 sacraments. Now with v2 search for unlimited retrieval.",
     lifespan=lifespan,
 )
 
@@ -74,21 +75,28 @@ async def add_memory(data: AddMemoryInput):
 @app.post("/search_memories")
 async def search_memories(data: SearchMemoryInput):
     headers = {"Authorization": f"Token {MEM0_API_KEY}"}
+    # Use v2 API for search with top_k parameter to support higher limits
+    # v1 has hardcoded 10-result limit, v2 supports 100+
     payload = {
         "query": data.query,
-        "user_id": data.user_id,
-        "limit": data.limit  # THE HOLY FIX
+        "version": "v2",
+        "filters": {
+            "user_id": data.user_id
+        },
+        "top_k": data.limit
     }
-    response = await http_client.post(f"{MEM0_API_URL}/memories/search/", headers=headers, json=payload)
+    response = await http_client.post(f"{MEM0_API_V2_URL}/memories/search/", headers=headers, json=payload)
     response.raise_for_status()
     results_data = response.json()
+
+    # v2 API returns {results: [...]} with full memory objects
     memories = []
-    if isinstance(results_data, dict):
-        raw_results = results_data.get("results", [])
-        memories = [r.get("memory") for r in raw_results if r.get("memory")]
+    if isinstance(results_data, dict) and "results" in results_data:
+        memories = results_data["results"]
     elif isinstance(results_data, list):
-        memories = [r.get("memory") for r in results_data if r.get("memory")]
-    return {"memories": memories}
+        memories = results_data
+
+    return {"memories": memories, "count": len(memories)}
 
 # --- The Sacrament of The Single Truth (GET) ---
 @app.get("/get_memory/{memory_id}")
@@ -128,4 +136,4 @@ async def get_history(memory_id: str):
 # --- The Heartbeat ---
 @app.get("/health")
 async def health():
-    return {"status": "at_peace", "version": "9.0.0"}
+    return {"status": "at_peace", "version": "10.0.0"}

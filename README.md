@@ -146,8 +146,11 @@ GET /health
 
 ## Version
 
-**9.0.0 (The All-Seeing Eye)**
-- Full memory retrieval with configurable limits
+**10.0.0 (The Enlightened One)**
+- Upgraded to Mem0 v2 API for search endpoint
+- v2 API supports 100+ results (v1 was limited to 10)
+- Full memory retrieval with top_k parameter
+- Returns complete memory objects with all metadata
 - Multi-worker support for production workloads
 - Optimized connection pooling
 
