@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="logo.png" alt="Mem0 Cathedral API Logo" width="200"/>
+</div>
+
 # Mem0 Cathedral API - Intelligent Edition
 
 FastAPI wrapper for Mem0 API with **MCP-inspired intelligence**: quality filtering, smart deduplication, and context enrichment for Open WebUI.
