@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="logo.png" alt="Mem0 Cathedral API Logo" width="200"/>
+  <img src="logo.png" alt="Mem0 Cathedral API Logo"/>
 </div>
 
 # Mem0 Cathedral API - Intelligent Edition
