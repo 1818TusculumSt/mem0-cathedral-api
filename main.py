@@ -202,7 +202,14 @@ async def add_memory(data: AddMemoryInput):
         )
         if search_response.status_code == 200:
             search_data = search_response.json()
-            similar_memories = search_data.get("results", [])
+
+            # Handle both list and dict responses from API
+            if isinstance(search_data, dict):
+                similar_memories = search_data.get("results", [])
+            elif isinstance(search_data, list):
+                similar_memories = search_data
+            else:
+                similar_memories = []
 
             for mem in similar_memories:
                 similarity = calculate_similarity(data.content, mem.get("memory", ""))
