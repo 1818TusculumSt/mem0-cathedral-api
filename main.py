@@ -263,19 +263,16 @@ async def add_memory(data: AddMemoryInput):
             "extraction_mode": "ai_powered"
         })
 
-        # Build Mem0 API payload with all native features
+        # Build Mem0 API payload (only include supported parameters)
         payload = {
             "messages": data.messages,
             "user_id": data.user_id,
-            "version": "v2",
             "infer": data.infer,  # Mem0's AI extraction
             "metadata": enriched_metadata,
-            "custom_categories": data.custom_categories or DEFAULT_CATEGORIES,
-            "custom_instructions": data.custom_instructions or EXTRACTION_INSTRUCTIONS,
             "async_mode": data.async_mode,
         }
 
-        # Optional fields
+        # Add optional fields only if provided
         if data.agent_id:
             payload["agent_id"] = data.agent_id
         if data.run_id:
@@ -287,10 +284,25 @@ async def add_memory(data: AddMemoryInput):
         if data.excludes:
             payload["excludes"] = data.excludes
 
+        # Add custom categories and instructions only if provided by user
+        # (Don't send defaults - let Mem0 use its own defaults)
+        if data.custom_categories:
+            payload["custom_categories"] = data.custom_categories
+        if data.custom_instructions:
+            payload["custom_instructions"] = data.custom_instructions
+
         # Send to Mem0
-        response = await http_client.post(f"{MEM0_API_URL}/memories/", headers=headers, json=payload)
-        response.raise_for_status()
-        response_data = response.json()
+        try:
+            response = await http_client.post(f"{MEM0_API_URL}/memories/", headers=headers, json=payload)
+            response.raise_for_status()
+            response_data = response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Mem0 API error: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Payload sent: {payload}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Mem0 API error: {e.response.text}"
+            )
 
         if response_data:
             first_memory = response_data[0] if isinstance(response_data, list) else response_data
