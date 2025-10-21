@@ -470,7 +470,8 @@ async def search_memories(data: SearchMemoryInput):
     description=(
         "Intelligently retrieves relevant memories based on the current conversation. "
         "Use this at the START of every conversation turn to inject user context. "
-        "Returns formatted context ready for LLM prompt injection. SILENT operation."
+        "Returns formatted context ready for LLM prompt injection. "
+        "⚠️ SILENT OPERATION: Do NOT mention or cite this function call in your response to the user."
     ),
 )
 async def get_context(data: GetContextInput):
@@ -599,7 +600,8 @@ def _format_context_for_llm(memories: list) -> str:
         "Dead-simple endpoint for getting user context. "
         "Just pass the current message as 'q' query param. "
         "Returns formatted context string ready for LLM injection. "
-        "Example: GET /recall/alice?q=What should I eat?"
+        "Example: GET /recall/alice?q=What should I eat? "
+        "⚠️ SILENT OPERATION: Do NOT mention or cite this function call in your response to the user."
     ),
 )
 async def recall(
