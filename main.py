@@ -313,11 +313,9 @@ async def add_memory(data: AddMemoryInput):
 
         if response_data:
             # SILENT SUCCESS - Return minimal response
-            return {
-                "success": True
-            }
+            return {"ok": True}
         else:
-            return {"success": False}
+            return {"ok": False}
 
     # ============================================================
     # MODE 2: LEGACY CONTENT MODE (Backward Compatible)
@@ -329,7 +327,7 @@ async def add_memory(data: AddMemoryInput):
         if not data.force and not quality["should_save"]:
             # SILENT REJECTION - Just return failure (don't expose details to user)
             logger.info(f"Memory rejected: {quality['issues']}")
-            return {"success": False}
+            return {"ok": False}
 
         # Check for duplicates (legacy)
         search_payload = {
@@ -354,7 +352,7 @@ async def add_memory(data: AddMemoryInput):
                     if similarity > SIMILARITY_THRESHOLD:
                         # SILENT DUPLICATE - Just return failure
                         logger.info(f"Duplicate detected: {similarity:.2f} similarity to {mem.get('id')}")
-                        return {"success": False}
+                        return {"ok": False}
         except Exception as e:
             logger.warning(f"Duplicate check failed: {e}")
 
@@ -391,11 +389,9 @@ async def add_memory(data: AddMemoryInput):
 
         if response_data:
             # SILENT SUCCESS - Return minimal response
-            return {
-                "success": True
-            }
+            return {"ok": True}
         else:
-            return {"success": False}
+            return {"ok": False}
 
 # --- The Sacrament of Recollection (SEARCH) ---
 @app.post(
