@@ -197,6 +197,14 @@ class UpdateMemoryInput(BaseModel):
     text: str = Field(..., description="The new content to replace the existing memory with.")
     user_id: str = Field(default="el-jefe-principal", description="User ID associated with this memory.")
 
+class GetContextInput(BaseModel):
+    current_message: str = Field(..., description="The user's current message to find relevant context for")
+    recent_messages: Optional[list[dict]] = Field(default=None, description="Recent conversation messages for better context understanding")
+    user_id: str = Field(default="el-jefe-principal", description="User ID to search memories for")
+    agent_id: Optional[str] = Field(default=None, description="Filter by specific AI agent")
+    max_memories: int = Field(default=10, description="Maximum relevant memories to return (1-20)")
+    enable_graph: bool = Field(default=True, description="Include entity relationships for better context")
+
 # ─────────────────────────
 # APP LIFECYCLE & MIDDLEWARE
 # ─────────────────────────
@@ -209,11 +217,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Mem0 Cathedral API",
-    version="12.0.0 (The AI-Powered One)",
+    version="12.1.0 (The Silent Oracle)",
     description=(
-        "🚀 AI-powered Mem0 wrapper with native extraction, categories, and graph memory. "
-        "Uses Mem0's built-in AI for intelligent memory extraction from conversations. "
-        "✅ AI Extraction | ✅ Custom Categories | ✅ Graph Relationships | ✅ Multi-Agent Support | ✅ Metadata & Filtering"
+        "🚀 AI-powered Mem0 wrapper with intelligent auto-recall and silent operations. "
+        "✅ Auto-Recall Context | ✅ Silent Saves | ✅ AI Extraction | ✅ Keyword Reranking | ✅ Graph Memory"
     ),
     lifespan=lifespan,
 )
@@ -305,19 +312,12 @@ async def add_memory(data: AddMemoryInput):
             )
 
         if response_data:
-            first_memory = response_data[0] if isinstance(response_data, list) else response_data
+            # SILENT SUCCESS - Return minimal response
             return {
-                "ok": True,
-                "mode": "ai_extraction",
-                "memory_id": first_memory.get("id"),
-                "extracted_count": len(response_data) if isinstance(response_data, list) else 1,
-                "categories": first_memory.get("categories", []),
-                "graph_enabled": data.enable_graph,
-                "async_processing": data.async_mode,
-                "message": "Memory extracted and saved by Mem0's AI"
+                "success": True
             }
         else:
-            return {"ok": False, "error": "Mem0 API returned empty response"}
+            return {"success": False}
 
     # ============================================================
     # MODE 2: LEGACY CONTENT MODE (Backward Compatible)
@@ -327,14 +327,9 @@ async def add_memory(data: AddMemoryInput):
         quality = assess_memory_quality(data.content)
 
         if not data.force and not quality["should_save"]:
-            return {
-                "ok": False,
-                "rejected": True,
-                "mode": "legacy_content",
-                "reason": "Quality threshold not met",
-                "issues": quality["issues"],
-                "suggestion": "Provide more context, use 'force: true', or switch to 'messages' mode for AI extraction",
-            }
+            # SILENT REJECTION - Just return failure (don't expose details to user)
+            logger.info(f"Memory rejected: {quality['issues']}")
+            return {"success": False}
 
         # Check for duplicates (legacy)
         search_payload = {
@@ -357,15 +352,9 @@ async def add_memory(data: AddMemoryInput):
                 for mem in similar_memories:
                     similarity = calculate_similarity(data.content, mem.get("memory", ""))
                     if similarity > SIMILARITY_THRESHOLD:
-                        return {
-                            "ok": False,
-                            "duplicate": True,
-                            "mode": "legacy_content",
-                            "existing_memory_id": mem.get("id"),
-                            "existing_content": mem.get("memory"),
-                            "similarity": round(similarity, 2),
-                            "suggestion": "Use update_memory to modify existing memory instead",
-                        }
+                        # SILENT DUPLICATE - Just return failure
+                        logger.info(f"Duplicate detected: {similarity:.2f} similarity to {mem.get('id')}")
+                        return {"success": False}
         except Exception as e:
             logger.warning(f"Duplicate check failed: {e}")
 
@@ -401,15 +390,12 @@ async def add_memory(data: AddMemoryInput):
         response_data = response.json()
 
         if response_data:
+            # SILENT SUCCESS - Return minimal response
             return {
-                "ok": True,
-                "mode": "legacy_content",
-                "memory_id": response_data[0].get("id"),
-                "quality_score": quality["score"],
-                "message": "Memory saved successfully (legacy mode)"
+                "success": True
             }
         else:
-            return {"ok": False, "error": "API returned an empty response, memory not created."}
+            return {"success": False}
 
 # --- The Sacrament of Recollection (SEARCH) ---
 @app.post(
@@ -476,6 +462,174 @@ async def search_memories(data: SearchMemoryInput):
             "graph_enabled": data.enable_graph
         }
     }
+
+# --- The Sacrament of Contextual Wisdom (AUTO-RECALL) ---
+@app.post(
+    "/get_context",
+    summary="🧠 Get relevant memories for conversation context",
+    description=(
+        "Intelligently retrieves relevant memories based on the current conversation. "
+        "Use this at the START of every conversation turn to inject user context. "
+        "Returns formatted context ready for LLM prompt injection. SILENT operation."
+    ),
+)
+async def get_context(data: GetContextInput):
+    """
+    Intelligent auto-recall: Searches memories using current message + recent context.
+    Returns top relevant memories formatted for LLM context injection.
+    """
+    headers = {"Authorization": f"Token {MEM0_API_KEY}"}
+
+    # Build search query from current message + recent context
+    search_query = data.current_message
+    if data.recent_messages:
+        # Add recent context to improve search relevance
+        recent_context = " ".join([
+            msg.get("content", "")[:100]
+            for msg in data.recent_messages[-3:]  # Last 3 messages
+        ])
+        search_query = f"{data.current_message} {recent_context}"
+
+    # Build filters
+    filters = {"user_id": data.user_id}
+    if data.agent_id:
+        filters["agent_id"] = data.agent_id
+
+    # Search with reranking strategy: get 3x results, return top N
+    retrieve_limit = min(data.max_memories * 3, 60)
+
+    payload = {
+        "query": search_query[:200],  # Limit query length
+        "version": "v2",
+        "filters": filters,
+        "top_k": retrieve_limit,
+        "enable_graph": data.enable_graph
+    }
+
+    try:
+        response = await http_client.post(
+            f"{MEM0_API_V2_URL}/memories/search/",
+            headers=headers,
+            json=payload
+        )
+        response.raise_for_status()
+        results_data = response.json()
+
+        # Extract memories
+        memories = []
+        if isinstance(results_data, dict) and "results" in results_data:
+            memories = results_data["results"]
+        elif isinstance(results_data, list):
+            memories = results_data
+
+        # Rerank by keyword matching with current message
+        memories = _rerank_by_keywords(memories, data.current_message)
+
+        # Take top N after reranking
+        top_memories = memories[:data.max_memories]
+
+        # Format for LLM context
+        context_string = _format_context_for_llm(top_memories)
+
+        return {
+            "context": context_string,
+            "memories": top_memories,
+            "count": len(top_memories),
+            "total_searched": len(memories)
+        }
+
+    except Exception as e:
+        logger.error(f"Auto-recall error: {e}")
+        # Return empty context on error (silent failure)
+        return {
+            "context": "",
+            "memories": [],
+            "count": 0,
+            "error": str(e)
+        }
+
+
+def _rerank_by_keywords(memories: list, query: str, boost: float = 0.15) -> list:
+    """Rerank memories by keyword matching"""
+    keywords = set(query.lower().split())
+
+    for mem in memories:
+        content = mem.get("memory", "").lower()
+        # Count keyword matches
+        matches = sum(1 for kw in keywords if kw in content)
+        # Boost score by 15% per keyword match
+        base_score = mem.get("score", 0.5)
+        mem["_rerank_score"] = base_score * (1 + (matches * boost))
+
+    return sorted(memories, key=lambda x: x.get("_rerank_score", 0), reverse=True)
+
+
+def _format_context_for_llm(memories: list) -> str:
+    """Format memories as context string for LLM"""
+    if not memories:
+        return ""
+
+    # Group by category for better organization
+    by_category = {}
+    for mem in memories:
+        cats = mem.get("categories", ["general"])
+        cat = cats[0] if cats else "general"
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append(mem.get("memory", ""))
+
+    # Build formatted context
+    lines = ["## User Context\n"]
+
+    for category, mems in by_category.items():
+        category_title = category.replace("_", " ").title()
+        lines.append(f"### {category_title}")
+        for mem_text in mems:
+            lines.append(f"- {mem_text}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+# --- The Sacrament of Instant Wisdom (SIMPLE RECALL) ---
+@app.get(
+    "/recall/{user_id}",
+    summary="⚡ Ultra-simple memory recall",
+    description=(
+        "Dead-simple endpoint for getting user context. "
+        "Just pass the current message as 'q' query param. "
+        "Returns formatted context string ready for LLM injection. "
+        "Example: GET /recall/alice?q=What should I eat?"
+    ),
+)
+async def recall(
+    user_id: str,
+    q: str,
+    limit: int = 10,
+    agent_id: Optional[str] = None
+):
+    """
+    Ultra-simple recall: Just the current message, get context back.
+    Perfect for quick integration.
+    """
+    # Build request for get_context
+    context_input = GetContextInput(
+        current_message=q,
+        user_id=user_id,
+        agent_id=agent_id,
+        max_memories=limit,
+        enable_graph=True
+    )
+
+    # Call internal get_context logic
+    result = await get_context(context_input)
+
+    # Return just the context string (simplest possible response)
+    return {
+        "context": result.get("context", ""),
+        "count": result.get("count", 0)
+    }
+
 
 # --- The Sacrament of The Single Truth (GET) ---
 @app.get(
@@ -625,25 +779,28 @@ async def consolidate_memories(user_id: str = "el-jefe-principal", dry_run: bool
 async def health():
     return {
         "status": "at_peace",
-        "version": "12.0.0",
-        "mode": "ai_powered",
+        "version": "12.1.0",
+        "mode": "silent_oracle",
         "features": {
+            "auto_recall": True,  # NEW: Intelligent context retrieval
+            "keyword_reranking": True,  # NEW: Hybrid search
+            "silent_operations": True,  # NEW: Minimal responses
             "ai_extraction": True,
-            "custom_categories": True,
             "graph_memory": True,
-            "metadata_support": True,
             "multi_agent": True,
             "session_tracking": True,
             "async_processing": True,
-            "legacy_mode": True,  # Backward compatible
-            "quality_filtering": True,  # Legacy mode only
-            "deduplication": True,  # Legacy mode only
-            "context_enrichment": True,
+            "legacy_mode": True,
+            "quality_filtering": True,
+            "deduplication": True,
             "consolidation": True
         },
-        "extraction_modes": {
-            "ai_powered": "Use 'messages' field for automatic extraction",
-            "legacy_content": "Use 'content' field for manual quality checks"
+        "new_endpoints": {
+            "get_context": "POST /get_context - Intelligent auto-recall with full options",
+            "recall": "GET /recall/{user_id}?q=message - Ultra-simple recall (recommended)"
         },
-        "default_categories": list(DEFAULT_CATEGORIES.keys())
+        "response_format": {
+            "add_memory": "Silent: {success: true/false}",
+            "get_context": "Returns formatted context string + memories"
+        }
     }
