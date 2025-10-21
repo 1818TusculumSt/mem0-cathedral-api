@@ -2,20 +2,24 @@
   <img src="logo.png" alt="Mem0 Cathedral API Logo"/>
 </div>
 
-# Mem0 Cathedral API - Intelligent Edition
+# Mem0 Cathedral API - The Silent Oracle
 
-FastAPI wrapper for Mem0 API with **MCP-inspired intelligence**: quality filtering, smart deduplication, and context enrichment for Open WebUI.
+FastAPI wrapper for Mem0 Platform API with **AI-powered memory extraction**, **intelligent auto-recall**, and **silent operations** for Open WebUI.
 
-## 🎯 What's New in v11.0
+## 🎯 What's New in v12.1.0 (The Silent Oracle)
 
-Your existing FastAPI REST API now has **ALL the intelligence features** from [mem0-cathedral-mcp](https://github.com/1818TusculumSt/mem0-cathedral-mcp):
+Your FastAPI REST API is now a **production-ready memory powerhouse**:
 
-- ✅ **Quality Filtering** - Rejects trivial acknowledgments and low-value content
-- ✅ **Smart Deduplication** - Prevents saving similar/duplicate memories
-- ✅ **Context Enrichment** - Automatically adds timestamps and clarifying context
-- ✅ **Memory Consolidation** - New endpoint to find and merge redundant memories
+- 🧠 **AI-Powered Extraction** - Mem0's native LLM extracts memories automatically from conversations
+- 🔍 **Intelligent Auto-Recall** - Hybrid search with keyword reranking for perfect context injection
+- 🤫 **Silent Operations** - Clean UX with minimal responses (no verbose clutter)
+- 📊 **Graph Memory** - Entity relationship tracking for contextual recall
+- 🏷️ **Custom Categories** - 12 predefined categories + custom support
+- 🤖 **Multi-Agent Support** - Track memories per agent with session IDs
+- ⚡ **Ultra-Simple Recall** - `GET /recall/{user_id}?q=message` for one-liner context retrieval
+- 🔄 **Backward Compatible** - Legacy v11.x content-based mode still works
 
-**Same REST API for Open WebUI. Now with intelligent memory management.**
+**FREE Mem0 API tier included. Zero LLM configuration required.**
 
 ---
 
@@ -39,165 +43,332 @@ docker run -d \
 ### Open WebUI Integration
 1. Navigate to **Settings → Functions**
 2. Add function: `http://your-server:8007/openapi.json`
-3. Intelligent memory operations now available in chats!
+3. AI-powered memory extraction + auto-recall now active!
 
 ---
 
-## 🎨 Intelligence Features
+## 🧠 Core Features
 
-### 1. Quality Filtering
+### 1. AI-Powered Memory Extraction
 
-Every memory is scored before saving:
+Send conversation messages, Mem0's AI extracts memories automatically.
 
-**Scoring Criteria:**
-- ✅ **Length**: Minimum 20 characters
-- ✅ **Word Count**: Minimum 4 words
-- ✅ **Content Value**: Rejects "ok", "thanks", simple acknowledgments
-- ✅ **Context Indicators**: Bonus for preferences, goals, technical details
-
-**Example:**
+**Before (Manual Extraction - Old Way):**
 ```json
-// ❌ REJECTED
 POST /add_memory
-{"content": "ok", "user_id": "el-jefe-principal"}
-
-Response:
 {
-  "ok": false,
-  "rejected": true,
-  "reason": "Quality threshold not met",
-  "issues": [
-    "Too short (min 20 chars)",
-    "Too few words (min 4 words)",
-    "Low-value acknowledgment"
+  "content": "User prefers Python for data science",
+  "user_id": "el-jefe-principal"
+}
+```
+
+**After (AI Extraction - New Way):**
+```json
+POST /add_memory
+{
+  "messages": [
+    {"role": "user", "content": "I love using Python for all my data science work"},
+    {"role": "assistant", "content": "That's great! Python has excellent ML libraries."}
   ],
-  "suggestion": "Provide more context or use 'force: true' to override"
-}
-
-// ✅ SAVED
-POST /add_memory
-{"content": "User prefers TypeScript over JavaScript for type safety", "user_id": "el-jefe-principal"}
-
-Response:
-{
-  "ok": true,
-  "memory_id": "mem_abc123",
-  "quality_score": 120,
-  "message": "Memory saved successfully"
+  "user_id": "el-jefe-principal",
+  "infer": true
 }
 ```
 
-### 2. Smart Deduplication
+**What happens:** Mem0's LLM automatically extracts:
+- `"User prefers Python for data science work"`
+- Auto-categorizes as `technical` and `preferences`
+- Stores with metadata, timestamps, and context
 
-Automatically checks for similar memories before saving (threshold: 0.85):
-
-**Example:**
+**Response (Silent Mode):**
 ```json
-// Attempt to save duplicate
-POST /add_memory
-{"content": "User likes Python for data science", "user_id": "el-jefe-principal"}
-
-// If similar memory exists...
-Response:
 {
-  "ok": false,
-  "duplicate": true,
-  "existing_memory_id": "mem_xyz789",
-  "existing_content": "User prefers Python for ML work",
-  "similarity": 0.87,
-  "suggestion": "Use update_memory to modify existing memory instead"
+  "success": true
 }
 ```
 
-### 3. Context Enrichment
+### 2. Intelligent Auto-Recall
 
-Memories are automatically enhanced with:
-- Timestamp metadata
-- Clarifying prefixes (e.g., "User preference: ...")
-- Self-contained structure
+Automatically inject relevant memories into conversation context.
 
-**Example:**
-```
-Input:  "prefers dark mode"
-Stored: "User preference: prefers dark mode
-         [Captured: 2024-01-15T10:30:00Z]"
-```
-
-### 4. Memory Consolidation (NEW!)
-
-Identifies redundant memories for cleanup:
-
-**Example:**
+**Option 1: Ultra-Simple (Recommended)**
 ```bash
-POST /consolidate_memories?user_id=el-jefe-principal&dry_run=true
+GET /recall/el-jefe-principal?q=What should I eat for dinner?&limit=10
 ```
 
 **Response:**
 ```json
 {
-  "ok": true,
-  "dry_run": true,
-  "candidates": [
-    {
-      "memory1_id": "mem_123",
-      "memory1_content": "User prefers Python",
-      "memory2_id": "mem_456",
-      "memory2_content": "User likes Python for data science",
-      "similarity": 0.82
-    }
+  "context": "## User Context\n\n### Food Preferences\n- User loves Italian food, especially pizza\n- User is vegetarian\n- User avoids spicy food\n\n### Health\n- User has lactose intolerance\n",
+  "count": 4
+}
+```
+
+**Option 2: Full-Featured**
+```json
+POST /get_context
+{
+  "current_message": "What should I eat for dinner?",
+  "recent_messages": [
+    {"role": "user", "content": "I'm feeling hungry"},
+    {"role": "assistant", "content": "What sounds good?"}
   ],
-  "count": 1,
-  "message": "Review these candidates. Use update_memory and delete_memory to consolidate manually."
+  "user_id": "el-jefe-principal",
+  "max_memories": 10,
+  "enable_graph": true
+}
+```
+
+**How it works:**
+1. Semantic search retrieves 3x candidates (30 for top 10)
+2. Keyword reranking boosts by 15% per match
+3. Returns top N formatted by category
+4. Ready for LLM prompt injection
+
+### 3. Silent Operations
+
+All memory saves return minimal responses - no clutter in chat.
+
+**Success:**
+```json
+{"success": true}
+```
+
+**Failure (quality/duplicate rejection):**
+```json
+{"success": false}
+```
+
+Quality issues and duplicates are **logged server-side only** - users never see rejection details.
+
+### 4. Graph Memory & Relationships
+
+Track entities and relationships automatically.
+
+```json
+POST /add_memory
+{
+  "messages": [
+    {"role": "user", "content": "My colleague Sarah introduced me to React"}
+  ],
+  "enable_graph": true,
+  "user_id": "el-jefe-principal"
+}
+```
+
+**Extracted:**
+- Memory: "User's colleague Sarah introduced them to React"
+- Entities: Sarah (person), React (technology)
+- Relationships: colleague_of, introduced_to
+
+### 5. Custom Categories & Instructions
+
+Use defaults or customize extraction behavior.
+
+**Default Categories (12 built-in):**
+- `personal_information` - Name, location, age, family
+- `preferences` - Likes, dislikes, favorites
+- `work` - Career, projects, professional info
+- `food_preferences` - Dietary restrictions, favorites
+- `technical` - Tech stack, tools, languages
+- `goals` - Objectives, plans, aspirations
+- `health` - Health conditions, fitness
+- `hobbies` - Interests, activities
+- `relationships` - Friends, family, colleagues
+- `location` - Places lived/visited
+- `schedule` - Routines, availability
+- `communication` - Preferred styles
+
+**Custom Example:**
+```json
+POST /add_memory
+{
+  "messages": [...],
+  "custom_categories": {
+    "gaming": "Video games, platforms, preferences",
+    "music": "Music genres, artists, instruments"
+  },
+  "custom_instructions": "Focus on extracting gaming preferences and musical tastes",
+  "user_id": "el-jefe-principal"
+}
+```
+
+### 6. Multi-Agent & Session Tracking
+
+Track memories per agent and conversation session.
+
+```json
+POST /add_memory
+{
+  "messages": [...],
+  "user_id": "el-jefe-principal",
+  "agent_id": "coding_assistant",
+  "run_id": "session_2024_01_15_001"
+}
+```
+
+**Search by agent:**
+```json
+POST /search_memories
+{
+  "query": "Python preferences",
+  "user_id": "el-jefe-principal",
+  "agent_id": "coding_assistant"
 }
 ```
 
 ---
 
-## 📚 API Endpoints
+## 📚 Complete API Reference
 
-### Core Memory Operations
+### Memory Operations
 
-#### Add Memory (with Intelligence)
+#### Add Memory (AI Mode - Recommended)
 ```http
 POST /add_memory
 {
-  "content": "User prefers Python over JavaScript",
+  "messages": [{"role": "user", "content": "..."}],
   "user_id": "el-jefe-principal",
-  "force": false  // Optional: bypass quality checks
+  "agent_id": "optional",
+  "run_id": "optional",
+  "infer": true,
+  "enable_graph": false,
+  "metadata": {"key": "value"},
+  "async_mode": true
 }
 ```
 
-**Responses:**
-- ✅ Success: `{ok: true, memory_id: "...", quality_score: 120}`
-- ❌ Rejected: `{ok: false, rejected: true, issues: [...]}`
-- ❌ Duplicate: `{ok: false, duplicate: true, existing_memory_id: "..."}`
+**Response:** `{"success": true/false}`
+
+#### Add Memory (Legacy Mode)
+```http
+POST /add_memory
+{
+  "content": "Pre-extracted memory text",
+  "user_id": "el-jefe-principal",
+  "force": false
+}
+```
+
+#### Get Context (Auto-Recall - Full)
+```http
+POST /get_context
+{
+  "current_message": "What should I do?",
+  "recent_messages": [...],
+  "user_id": "el-jefe-principal",
+  "max_memories": 10,
+  "enable_graph": true
+}
+```
+
+**Response:**
+```json
+{
+  "context": "## User Context\n\n### Category\n- Memory 1\n- Memory 2\n",
+  "memories": [...],
+  "count": 10,
+  "total_searched": 30
+}
+```
+
+#### Recall (Ultra-Simple)
+```http
+GET /recall/{user_id}?q=current_message&limit=10&agent_id=optional
+```
+
+**Response:**
+```json
+{
+  "context": "formatted context string",
+  "count": 10
+}
+```
 
 #### Search Memories
 ```http
 POST /search_memories
 {
-  "query": "programming preferences",
+  "query": "search text",
   "user_id": "el-jefe-principal",
-  "limit": 100
+  "agent_id": "optional",
+  "run_id": "optional",
+  "limit": 100,
+  "categories": ["technical", "preferences"],
+  "enable_graph": false
 }
 ```
 
-#### Get All Memories (NEW!)
+#### Get All Memories
 ```http
-GET /get_all_memories/el-jefe-principal
+GET /get_all_memories/{user_id}
 ```
 
-#### Consolidate Memories (NEW!)
+#### Get Specific Memory
+```http
+GET /get_memory/{memory_id}
+```
+
+#### Update Memory
+```http
+PUT /update_memory/{memory_id}
+{
+  "data": "new content"
+}
+```
+
+#### Delete Memory
+```http
+DELETE /delete_memory/{memory_id}
+```
+
+#### Get Memory History
+```http
+GET /get_history/{memory_id}
+```
+
+#### Consolidate Memories (Legacy Feature)
 ```http
 POST /consolidate_memories?user_id=el-jefe-principal&dry_run=true
 ```
 
-#### Other Endpoints
-- `GET /get_memory/{memory_id}` - Get specific memory
-- `PUT /update_memory/{memory_id}` - Update memory
-- `DELETE /delete_memory/{memory_id}` - Delete memory
-- `GET /get_history/{memory_id}` - View modification history
-- `GET /health` - Health check with feature flags
+### System Endpoints
+
+#### Health Check
+```http
+GET /health
+```
+
+**Response:**
+```json
+{
+  "status": "at_peace",
+  "version": "12.1.0",
+  "mode": "silent_oracle",
+  "features": {
+    "auto_recall": true,
+    "keyword_reranking": true,
+    "silent_operations": true,
+    "ai_extraction": true,
+    "graph_memory": true,
+    "multi_agent": true,
+    "session_tracking": true,
+    "async_processing": true,
+    "legacy_mode": true,
+    "quality_filtering": true,
+    "deduplication": true,
+    "consolidation": true
+  },
+  "new_endpoints": {
+    "get_context": "POST /get_context",
+    "recall": "GET /recall/{user_id}?q=message"
+  },
+  "response_format": {
+    "add_memory": "Silent: {success: true/false}",
+    "get_context": "Returns formatted context string + memories"
+  }
+}
+```
 
 ### API Documentation
 - **Swagger UI**: `http://localhost:8007/docs`
@@ -206,11 +377,31 @@ POST /consolidate_memories?user_id=el-jefe-principal&dry_run=true
 
 ---
 
+## 🧪 Usage Examples
+
+See [EXAMPLES.md](EXAMPLES.md) for 12 detailed examples including:
+- Basic AI extraction
+- Multi-category extraction
+- Custom categories & instructions
+- Graph memory relationships
+- Multi-agent tracking
+- Metadata filtering
+- Legacy mode compatibility
+- Python SDK usage
+
+---
+
 ## ⚙️ Configuration
 
-### Quality Thresholds
+### Environment Variables
 
-Customize in [main.py:22-24](main.py#L22-L24):
+```bash
+MEM0_API_KEY=your_mem0_api_key_here  # Required - get from https://app.mem0.ai/
+```
+
+### Quality Thresholds (Legacy Mode)
+
+Customize in [main.py:21-24](main.py#L21-L24):
 
 ```python
 MIN_MEMORY_LENGTH = 20      # Minimum characters (default: 20)
@@ -218,131 +409,15 @@ MIN_WORD_COUNT = 4          # Minimum words (default: 4)
 SIMILARITY_THRESHOLD = 0.85 # Deduplication threshold (default: 0.85)
 ```
 
-### Environment Variables
+### Keyword Reranking
 
-- `MEM0_API_KEY` (required) - Your Mem0 API key from https://app.mem0.ai/
-- Default user ID: `el-jefe-principal`
+Adjust boost factor in `_rerank_by_keywords()`:
 
-### Quality Indicators
-
-**Good indicators** (bonus points):
-- Preferences: "prefer", "like", "love", "hate"
-- Technical: "project", "tool", "language"
-- Personal: "name is", "location", "timezone"
-- Goals: "goal", "objective", "plan"
-
-**Low-value patterns** (rejected):
-- "ok", "okay", "got it", "understood"
-- "sure", "thanks", "thank you"
-- "yes", "no", "maybe", "alright"
-
----
-
-## 🧪 Usage Examples
-
-### Example 1: Quality Filtering
-
-**Good Memory:**
-```bash
-curl -X POST http://localhost:8007/add_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "User prefers PostgreSQL over MySQL for complex queries and ACID compliance",
-    "user_id": "el-jefe-principal"
-  }'
-```
-
-**Response:**
-```json
-{
-  "ok": true,
-  "memory_id": "mem_abc123",
-  "quality_score": 120,
-  "message": "Memory saved successfully"
-}
-```
-
-**Low-Quality Memory:**
-```bash
-curl -X POST http://localhost:8007/add_memory \
-  -H "Content-Type: application/json" \
-  -d '{"content": "ok", "user_id": "el-jefe-principal"}'
-```
-
-**Response:**
-```json
-{
-  "ok": false,
-  "rejected": true,
-  "reason": "Quality threshold not met",
-  "issues": [
-    "Too short (min 20 chars)",
-    "Too few words (min 4 words)",
-    "Low-value acknowledgment"
-  ],
-  "suggestion": "Provide more context or use 'force: true' to override"
-}
-```
-
-### Example 2: Force Save Override
-
-```bash
-curl -X POST http://localhost:8007/add_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "ok",
-    "user_id": "el-jefe-principal",
-    "force": true
-  }'
-```
-
-### Example 3: Deduplication
-
-**Attempt to save duplicate:**
-```bash
-curl -X POST http://localhost:8007/add_memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "User likes Python for data science",
-    "user_id": "el-jefe-principal"
-  }'
-```
-
-**Response (if similar memory exists):**
-```json
-{
-  "ok": false,
-  "duplicate": true,
-  "existing_memory_id": "mem_xyz789",
-  "existing_content": "User prefers Python for ML work",
-  "similarity": 0.87,
-  "suggestion": "Use update_memory to modify existing memory instead"
-}
-```
-
-### Example 4: Consolidation
-
-```bash
-curl -X POST "http://localhost:8007/consolidate_memories?user_id=el-jefe-principal&dry_run=true"
-```
-
-**Response:**
-```json
-{
-  "ok": true,
-  "dry_run": true,
-  "candidates": [
-    {
-      "memory1_id": "mem_123",
-      "memory1_content": "User prefers Python",
-      "memory2_id": "mem_456",
-      "memory2_content": "User likes Python for data science",
-      "similarity": 0.82
-    }
-  ],
-  "count": 1,
-  "message": "Review these candidates. Use update_memory and delete_memory to consolidate manually."
-}
+```python
+def _rerank_by_keywords(memories: list, query: str, boost: float = 0.15):
+    # Default: 15% boost per keyword match
+    # Increase for stronger keyword influence: 0.20 or 0.25
+    # Decrease for more semantic focus: 0.10 or 0.05
 ```
 
 ---
@@ -354,28 +429,81 @@ curl -X POST "http://localhost:8007/consolidate_memories?user_id=el-jefe-princip
 - **Server**: Uvicorn with 2 workers (production)
 - **HTTP Client**: httpx with HTTP/2 support
 - **Validation**: Pydantic v2
-- **Features**: Quality filtering, deduplication, enrichment, consolidation
+- **Memory Provider**: Mem0 Platform API (cloud-based)
 
-### Intelligence Features (NEW in v11.0)
-- Quality assessment before saving
-- Semantic similarity detection
-- Automatic context enrichment
-- Memory consolidation endpoint
+### Intelligence Pipeline
+
+**AI Extraction Mode:**
+```
+User Messages → Mem0 LLM → Extracted Memories → Categories → Graph (optional) → Storage
+```
+
+**Auto-Recall Mode:**
+```
+User Query → Semantic Search (3x candidates) → Keyword Reranking (15% boost/match) → Top N → Format by Category → LLM Context
+```
+
+**Legacy Mode:**
+```
+Content → Quality Check → Deduplication → Enrichment → Storage
+```
 
 ---
 
 ## 🔄 Version Comparison
 
-| Feature | v10.0 (Before) | v11.0 (After) |
-|---------|----------------|---------------|
-| Quality Filtering | ❌ | ✅ |
-| Deduplication | ❌ | ✅ |
-| Context Enrichment | ❌ | ✅ |
-| Memory Consolidation | ❌ | ✅ |
-| v2 Search API | ✅ | ✅ |
-| 100+ Search Results | ✅ | ✅ |
-| Docker Support | ✅ | ✅ |
-| Open WebUI Integration | ✅ | ✅ |
+| Feature | v11.0 | v12.0 | v12.1 |
+|---------|-------|-------|-------|
+| AI Extraction (Mem0 native) | ❌ | ✅ | ✅ |
+| Auto-Recall Context | ❌ | ❌ | ✅ |
+| Keyword Reranking | ❌ | ❌ | ✅ |
+| Silent Operations | ❌ | ❌ | ✅ |
+| Graph Memory | ❌ | ✅ | ✅ |
+| Custom Categories | ❌ | ✅ | ✅ |
+| Multi-Agent Tracking | ❌ | ✅ | ✅ |
+| Session IDs | ❌ | ✅ | ✅ |
+| Ultra-Simple Recall | ❌ | ❌ | ✅ |
+| Quality Filtering (legacy) | ✅ | ✅ | ✅ |
+| Deduplication (legacy) | ✅ | ✅ | ✅ |
+| v2 Search API | ✅ | ✅ | ✅ |
+| 100+ Search Results | ✅ | ✅ | ✅ |
+
+---
+
+## 🚀 Production Deployment
+
+### Standard Workflow
+
+```bash
+# 1. Pull latest changes
+git pull origin main
+
+# 2. Rebuild container (no cache)
+docker compose build --no-cache
+
+# 3. Deploy
+docker compose up -d
+
+# 4. Verify health
+curl http://localhost:8007/health
+```
+
+### Expected Health Response
+
+```json
+{
+  "status": "at_peace",
+  "version": "12.1.0",
+  "mode": "silent_oracle",
+  "features": {
+    "auto_recall": true,
+    "keyword_reranking": true,
+    "silent_operations": true,
+    "ai_extraction": true,
+    "graph_memory": true
+  }
+}
+```
 
 ---
 
@@ -400,20 +528,40 @@ docker compose build --no-cache
 docker compose up -d
 ```
 
-### Too many memories rejected
+### Mem0 API Errors
 
-Lower quality thresholds in [main.py:22-24](main.py#L22-L24):
+**400 Bad Request:**
+- Usually means invalid payload
+- Check logs: `docker logs mem0-proxy`
+- Verify `MEM0_API_KEY` is set correctly
+
+**401 Unauthorized:**
+- Invalid API key
+- Get fresh key from https://app.mem0.ai/
+
+**429 Rate Limited:**
+- Exceeded free tier limits
+- Wait or upgrade Mem0 plan
+
+### Auto-Recall Not Finding Memories
+
+**Increase candidate pool:**
 ```python
-MIN_MEMORY_LENGTH = 10   # Was 20
-MIN_WORD_COUNT = 2       # Was 4
+# In get_context endpoint
+retrieve_limit = min(data.max_memories * 5, 100)  # Was 3x, now 5x
 ```
 
-### Duplicate detection too sensitive
-
-Increase similarity threshold in [main.py:24](main.py#L24):
+**Adjust reranking boost:**
 ```python
-SIMILARITY_THRESHOLD = 0.90  # Was 0.85 (higher = more strict)
+memories = _rerank_by_keywords(memories, data.current_message, boost=0.20)  # Was 0.15
 ```
+
+### LLM Showing Function Call Citations
+
+**Fixed in v12.1.0** - If you still see citations:
+1. Verify you're running v12.1.0: `curl http://localhost:8007/health`
+2. Check Open WebUI function settings
+3. Ensure OpenAPI spec is up-to-date
 
 ---
 
@@ -424,6 +572,7 @@ SIMILARITY_THRESHOLD = 0.90  # Was 0.85 (higher = more strict)
 - **HTTP/2**: Enabled for Mem0 API calls
 - **Connection pooling**: Via httpx AsyncClient
 - **Health check**: Every 30s with 40s startup grace
+- **Async Processing**: Background memory extraction (default on)
 
 ---
 
@@ -432,51 +581,96 @@ SIMILARITY_THRESHOLD = 0.90  # Was 0.85 (higher = more strict)
 - Never commit `MEM0_API_KEY` to version control
 - Use environment variables for secrets
 - CORS enabled for Open WebUI (adjust for production if needed)
-- Quality filtering prevents spam/junk memories
+- Quality filtering prevents spam/junk memories (legacy mode)
+- Silent operations prevent information leakage in chat
 
 ---
 
-## 📦 Stack Details
+## 💡 Tips for Open WebUI
 
-### Dependencies
-- `fastapi==0.115.4`
-- `uvicorn[standard]`
-- `httpx[http2]`
-- `pydantic>=2.0`
+### Recommended Configuration
 
-### Environment
-- Python 3.11+
-- Docker with multi-stage build
-- Slim base image for smaller footprint
+**Use AI extraction mode:**
+```json
+{
+  "messages": [...],
+  "infer": true,
+  "enable_graph": true,
+  "async_mode": true
+}
+```
+
+**Enable auto-recall at conversation start:**
+```
+GET /recall/el-jefe-principal?q={current_user_message}&limit=10
+```
+
+**Let silent operations work:**
+- Don't expect verbose confirmation messages
+- Check server logs for quality/duplicate rejections
+- Use `{"success": true}` as signal for UI updates
+
+### Best Practices
+
+1. **AI extraction > Manual extraction** - Better quality, less work
+2. **Enable graph memory** - Richer context for relationships
+3. **Use auto-recall** - Inject context automatically
+4. **Trust silent operations** - Clean UX is worth it
+5. **Monitor server logs** - See what's being filtered
+
+---
+
+## 📧 Support & Resources
+
+- **Issues**: [GitHub Issues](https://github.com/1818TusculumSt/mem0-cathedral-api/issues)
+- **Mem0 Docs**: https://docs.mem0.ai
+- **Open WebUI**: https://github.com/open-webui/open-webui
+- **MCP Version**: [mem0-cathedral-mcp](https://github.com/1818TusculumSt/mem0-cathedral-mcp)
 
 ---
 
 ## 🎯 Version History
 
-### 11.0.0 (The Intelligent One) - **Current**
+### 12.1.0 (The Silent Oracle) - **Current**
+- ✅ Intelligent auto-recall with keyword reranking
+- ✅ Ultra-simple `/recall` endpoint
+- ✅ Silent operations (`{success: true/false}`)
+- ✅ No function call citations in LLM responses
+- ✅ Hybrid search (semantic + lexical)
+- ✅ Context formatting by category
+
+### 12.0.0 (The AI-Powered One)
+- ✅ AI-powered extraction via Mem0 native API
+- ✅ Custom categories (12 defaults)
+- ✅ Custom extraction instructions
+- ✅ Graph memory support
+- ✅ Multi-agent tracking
+- ✅ Session IDs (run_id)
+- ✅ Structured metadata
+- ✅ Category filtering in search
+- ✅ Async processing mode
+
+### 11.0.0 (The Intelligent One)
 - ✅ Quality filtering with configurable thresholds
 - ✅ Smart deduplication before saving
-- ✅ Automatic context enrichment with timestamps
+- ✅ Automatic context enrichment
 - ✅ Memory consolidation endpoint
-- ✅ Force save override option
-- ✅ Enhanced health check with feature flags
 
 ### 10.0.0 (The Enlightened One)
-- Upgraded to Mem0 v2 API for search
-- 100+ search results support (was limited to 10)
-- Multi-worker production setup
+- ✅ Upgraded to Mem0 v2 API
+- ✅ 100+ search results support
 
 ### 9.0.0 and earlier
 - Basic Mem0 v1 API wrapper
-- Simple CRUD operations
 
 ---
 
 ## 🤝 Credits
 
-- **Original API**: Built for Open WebUI integration
-- **Intelligence Features**: Inspired by [mem0-cathedral-mcp](https://github.com/1818TusculumSt/mem0-cathedral-mcp)
-- **Maintained by**: El Jefe Principal 🧠
+- **Built by**: El Jefe Principal 🧠
+- **Powered by**: [Mem0 Platform API](https://mem0.ai)
+- **Designed for**: [Open WebUI](https://github.com/open-webui/open-webui)
+- **Sister Project**: [mem0-cathedral-mcp](https://github.com/1818TusculumSt/mem0-cathedral-mcp)
 
 ---
 
@@ -486,71 +680,27 @@ Built for the network. Use wisely. 🏗️
 
 ---
 
-## 🚀 Deployment
+## 🌟 Why Cathedral API?
 
-### Production Workflow
+**vs SmartMemory API:**
+- ✅ **FREE** - Mem0 API is free for minimal usage
+- ✅ **Lightweight** - 100MB vs 4GB Docker image
+- ✅ **Zero Config** - No LLM setup required
+- ✅ **Cloud-Based** - No local inference overhead
+- ✅ **Production Ready** - Silent, fast, reliable
 
-1. **Pull latest changes:**
-   ```bash
-   git pull origin main
-   ```
+**vs Manual Memory Management:**
+- ✅ **AI Extraction** - No manual memory writing
+- ✅ **Auto-Recall** - Automatic context injection
+- ✅ **Graph Memory** - Relationship tracking
+- ✅ **Silent Operations** - Clean UX
 
-2. **Rebuild container:**
-   ```bash
-   docker compose build --no-cache
-   docker compose up -d
-   ```
-
-3. **Verify health:**
-   ```bash
-   curl http://localhost:8007/health
-   ```
-
-### Expected Health Response
-```json
-{
-  "status": "at_peace",
-  "version": "11.0.0",
-  "features": {
-    "quality_filtering": true,
-    "deduplication": true,
-    "context_enrichment": true,
-    "consolidation": true
-  }
-}
-```
-
----
-
-## 💡 Tips for Open WebUI
-
-### Best Practices
-
-1. **Let quality filtering work** - It prevents memory bloat
-2. **Use force sparingly** - Only when truly needed
-3. **Run consolidation periodically** - Clean up duplicates
-4. **Check duplicate suggestions** - Update instead of creating new
-
-### Adjusting for Your Needs
-
-**More permissive filtering:**
-```python
-MIN_MEMORY_LENGTH = 10
-MIN_WORD_COUNT = 2
-```
-
-**More strict deduplication:**
-```python
-SIMILARITY_THRESHOLD = 0.90
-```
-
----
-
-## 📧 Support
-
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Mem0 Docs**: https://docs.mem0.ai
-- **Open WebUI**: https://github.com/open-webui/open-webui
+**Perfect For:**
+- Open WebUI deployments
+- Personal AI assistants
+- Multi-agent systems
+- Session-based conversations
+- Relationship-aware context
 
 ---
 
