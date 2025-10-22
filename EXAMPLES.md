@@ -1,5 +1,7 @@
 # Cathedral API v12.0 - Usage Examples
 
+> **⚠️ Graph Features Note:** Examples using `"enable_graph": true` require a Mem0 PRO subscription. Set `ENABLE_GRAPH_FEATURES=true` in your environment if you have PRO access. Otherwise, omit the `enable_graph` parameter or set it to `false`.
+
 ## Example 1: Basic AI Extraction
 
 **Scenario:** User shares preferences in conversation

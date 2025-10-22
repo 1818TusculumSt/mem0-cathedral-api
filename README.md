@@ -36,9 +36,12 @@ docker build -t mem0-cathedral-api .
 docker run -d \
   -p 8007:8000 \
   -e MEM0_API_KEY=your_mem0_api_key_here \
+  -e ENABLE_GRAPH_FEATURES=false \
   --name mem0-proxy \
   mem0-cathedral-api
 ```
+
+> **Note:** Graph features require a Mem0 PRO subscription. Set `ENABLE_GRAPH_FEATURES=true` only if you have PRO access.
 
 ### Open WebUI Integration
 1. Navigate to **Settings → Functions**
@@ -143,6 +146,9 @@ Quality issues and duplicates are **logged server-side only** - users never see 
 
 ### 4. Graph Memory & Relationships
 
+> **⚠️ Requires Mem0 PRO Subscription**
+> Graph features are only available with a Mem0 PRO account. Set `ENABLE_GRAPH_FEATURES=true` in your environment if you have PRO access.
+
 Track entities and relationships automatically.
 
 ```json
@@ -160,6 +166,8 @@ POST /add_memory
 - Memory: "User's colleague Sarah introduced them to React"
 - Entities: Sarah (person), React (technology)
 - Relationships: colleague_of, introduced_to
+
+**Without PRO:** Setting `enable_graph: true` will return a 403 error unless `ENABLE_GRAPH_FEATURES=true` is set.
 
 ### 5. Custom Categories & Instructions
 

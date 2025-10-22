@@ -18,6 +18,9 @@ MEM0_API_KEY = os.getenv("MEM0_API_KEY", "")
 MEM0_API_URL = "https://api.mem0.ai/v1"
 MEM0_API_V2_URL = "https://api.mem0.ai/v2"
 
+# Graph feature control (requires Mem0 PRO subscription)
+ENABLE_GRAPH_FEATURES = os.getenv("ENABLE_GRAPH_FEATURES", "false").lower() == "true"
+
 # Quality thresholds (configurable) - Used for legacy content-based mode
 MIN_MEMORY_LENGTH = 20  # Minimum characters for a memory
 MIN_WORD_COUNT = 4      # Minimum words in a memory
@@ -176,7 +179,7 @@ class AddMemoryInput(BaseModel):
     metadata: Optional[dict] = Field(default=None, description="Structured metadata (location, timestamp, tags, etc.).")
 
     # Advanced features
-    enable_graph: bool = Field(default=False, description="Build entity relationships for contextual retrieval.")
+    enable_graph: bool = Field(default=False, description="Build entity relationships for contextual retrieval. (Requires Mem0 PRO)")
     includes: Optional[str] = Field(default=None, description="Focus extraction on specific topics (e.g., 'preferences, goals, skills').")
     excludes: Optional[str] = Field(default=None, description="Exclude specific patterns (e.g., 'acknowledgments, temporary states').")
     async_mode: bool = Field(default=True, description="Process memory in background for faster response.")
@@ -191,7 +194,7 @@ class SearchMemoryInput(BaseModel):
     run_id: Optional[str] = Field(default=None, description="Filter by specific conversation session.")
     limit: int = Field(default=100, description="Maximum number of memories to return (up to 100).")
     categories: Optional[list[str]] = Field(default=None, description="Filter by memory categories (e.g., ['preferences', 'work']).")
-    enable_graph: bool = Field(default=False, description="Include entity relationships in search results.")
+    enable_graph: bool = Field(default=False, description="Include entity relationships in search results. (Requires Mem0 PRO)")
 
 class UpdateMemoryInput(BaseModel):
     text: str = Field(..., description="The new content to replace the existing memory with.")
@@ -203,7 +206,7 @@ class GetContextInput(BaseModel):
     user_id: str = Field(default="el-jefe-principal", description="User ID to search memories for")
     agent_id: Optional[str] = Field(default=None, description="Filter by specific AI agent")
     max_memories: int = Field(default=10, description="Maximum relevant memories to return (1-20)")
-    enable_graph: bool = Field(default=True, description="Include entity relationships for better context")
+    enable_graph: bool = Field(default=False, description="Include entity relationships for better context. (Requires Mem0 PRO)")
 
 # ─────────────────────────
 # APP LIFECYCLE & MIDDLEWARE
@@ -256,6 +259,13 @@ async def add_memory(data: AddMemoryInput):
     # Validate input
     if not data.messages and not data.content:
         raise HTTPException(status_code=400, detail="Either 'messages' or 'content' must be provided")
+
+    # Validate graph feature availability
+    if data.enable_graph and not ENABLE_GRAPH_FEATURES:
+        raise HTTPException(
+            status_code=403,
+            detail="Graph features require Mem0 PRO subscription. Set ENABLE_GRAPH_FEATURES=true if you have PRO access."
+        )
 
     # ============================================================
     # MODE 1: AI EXTRACTION (Mem0 native - RECOMMENDED)
@@ -411,6 +421,13 @@ async def search_memories(data: SearchMemoryInput):
     - Agent/Session filtering
     - Up to 100 results
     """
+    # Validate graph feature availability
+    if data.enable_graph and not ENABLE_GRAPH_FEATURES:
+        raise HTTPException(
+            status_code=403,
+            detail="Graph features require Mem0 PRO subscription. Set ENABLE_GRAPH_FEATURES=true if you have PRO access."
+        )
+
     headers = {"Authorization": f"Token {MEM0_API_KEY}"}
 
     # Build filters
@@ -475,6 +492,13 @@ async def get_context(data: GetContextInput):
     Intelligent auto-recall: Searches memories using current message + recent context.
     Returns top relevant memories formatted for LLM context injection.
     """
+    # Validate graph feature availability
+    if data.enable_graph and not ENABLE_GRAPH_FEATURES:
+        raise HTTPException(
+            status_code=403,
+            detail="Graph features require Mem0 PRO subscription. Set ENABLE_GRAPH_FEATURES=true if you have PRO access."
+        )
+
     headers = {"Authorization": f"Token {MEM0_API_KEY}"}
 
     # Build search query from current message + recent context
@@ -616,7 +640,7 @@ async def recall(
         user_id=user_id,
         agent_id=agent_id,
         max_memories=limit,
-        enable_graph=True
+        enable_graph=ENABLE_GRAPH_FEATURES  # Use global setting instead of hardcoded True
     )
 
     # Call internal get_context logic
@@ -784,7 +808,7 @@ async def health():
             "keyword_reranking": True,  # NEW: Hybrid search
             "silent_operations": True,  # NEW: Minimal responses
             "ai_extraction": True,
-            "graph_memory": True,
+            "graph_memory": ENABLE_GRAPH_FEATURES,  # Requires Mem0 PRO subscription
             "multi_agent": True,
             "session_tracking": True,
             "async_processing": True,
